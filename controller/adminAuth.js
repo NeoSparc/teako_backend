@@ -82,6 +82,7 @@ exports.otpPost = async (req, res) => {
   const data = await authCollection.findOne({ email: email });
   if (data) {
     if (data.otp === otp) {
+      const emailContend = emailsection.resetPasswordSuccess
       await authCollection.findOneAndUpdate(
         {
           email: email,
@@ -98,7 +99,7 @@ exports.otpPost = async (req, res) => {
         to: data.email,
         subject: "Reset password Successful!",
 
-        html: emailsection.resetPasswordSuccess,
+        html: emailContend,
       };
       nodemailer.sentEmailOtp(mailOptions);
 
