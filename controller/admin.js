@@ -3,6 +3,7 @@ const productCollection = require("../model/product");
 const bannerCollection = require("../model/banner");
 const offerCollection = require("../model/offer");
 const productCallbackCollection = require("../model/productCallback");
+const imgurService = require('../middleware/imgur')
 
 // get all users list
 exports.getallUsersList = async (req, res) => {
@@ -34,53 +35,63 @@ exports.getallUsersList = async (req, res) => {
 
 // Add New Product
 exports.addNewProduct = async (req, res) => {
+  console.log('this is body', req.body);
+
   try {
     const {
-      name,
+      productName,
       description,
       price,
       length,
       width,
       availability,
-      image,
       category,
     } = req.body;
 
-    if (!name || !price || !availability || !image || !category) {
-      res.status(400).json({
+    if (!productName || !price || !availability || !category || !req.file) {
+      return res.status(400).json({
         success: false,
         message:
           "Name, price, availability, image, and category are required fields.",
       });
     }
 
+    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
+    console.log(imgurResponse);
+    
+    const image = imgurResponse.link;
+    const deleteHash = imgurResponse.deletehash;
+
     const newProduct = new productCollection({
-      name,
+      productName,
       description,
       price,
       length,
       width,
       availability,
       image,
+      deleteHash,
       category,
     });
 
     const savedProduct = await newProduct.save();
+    console.log(savedProduct);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
       message: "Product added successfully",
       data: savedProduct,
     });
   } catch (err) {
     console.error("Error adding product:", err.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "An error occurred while adding the product",
       error: err.message,
     });
   }
 };
+
 
 // Edit Product
 exports.editProduct = async (req, res) => {

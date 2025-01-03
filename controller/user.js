@@ -42,6 +42,8 @@ exports.getSingleProduct = async (req, res) => {
 
 // Connect With Us Form Submission
 exports.connectWithUs = async (req, res) => {
+  console.log(req.body);
+  
   try {
     const { name, email, phoneNumber, place, category } = req.body;
 
@@ -55,7 +57,7 @@ exports.connectWithUs = async (req, res) => {
     const newRequest = new usersCollection({
       name,
       email,
-      phoneNumber,
+      phoneNumber, 
       place,
       category,
     });
@@ -90,7 +92,7 @@ exports.productCallBack = async (req, res) => {
       });
     }
 
-    const newCallback = new requistsCollection({
+    const newCallback = new productCallbackCollection({
       name,
       email,
       phoneNumber,
@@ -141,3 +143,60 @@ exports.showAllProduct = async (req, res) => {
     });
   }
 };
+
+// banner get
+exports.getAllBanners = async (req, res) => {
+  console.log(req.body);
+  try {
+    const allBanners = await bannerCollection.find();
+
+    if (allBanners.length > 0) {
+      res.status(200).json({
+        success: true,
+        message: "Banners retrieved successfully",
+        data: allBanners,
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "No banners found",
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching banners:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching banners",
+      error: err.message,
+    });
+  }
+};
+
+// get all offers
+exports.getAllOffers = async (req, res) => {
+  console.log(req.body);
+  try {
+    const allOffers = await offerCollection.find();
+
+    if (allOffers.length > 0) {
+      res.status(200).json({
+        success: true,
+        message: "Offers retrieved successfully",
+        data: allOffers,
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "No offers found",
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching offers:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching offers",
+      error: err.message,
+    });
+  }
+}; 
+
