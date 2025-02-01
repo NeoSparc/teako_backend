@@ -3,13 +3,26 @@ const productCollection = require("../model/product");
 const bannerCollection = require("../model/banner");
 const offerCollection = require("../model/offer");
 const productCallbackCollection = require("../model/productCallback");
-const imgurService = require('../middleware/imgur')
+const cloudinary = require("../middleware/cloudinary");
+const streamifier = require("streamifier");
+
+const uploadFromBuffer = (buffer) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "products" },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result);
+      }
+    );
+    streamifier.createReadStream(buffer).pipe(stream);
+  });
+};
 
 // get all users list
 exports.getallUsersList = async (req, res) => {
-  console.log(req.body);
   try {
-    const allUsers = await usersCollection.find();
+    const allUsers = await usersCollection.find().sort({ createdAt: -1 });
 
     if (allUsers.length > 0) {
       res.status(200).json({
@@ -35,8 +48,6 @@ exports.getallUsersList = async (req, res) => {
 
 // Add New Product
 exports.addNewProduct = async (req, res) => {
-  console.log('this is body', req.body);
-
   try {
     const {
       productName,
@@ -56,26 +67,23 @@ exports.addNewProduct = async (req, res) => {
       });
     }
 
-    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
-    console.log(imgurResponse);
-    
-    const image = imgurResponse.link;
-    const deleteHash = imgurResponse.deletehash;
+    // Upload image to Cloudinary
+    const result = await uploadFromBuffer(req.file.buffer);
+    console.log(result);
 
     const newProduct = new productCollection({
       productName,
       description,
       price,
-      length,
       width,
+      length,
       availability,
-      image,
-      deleteHash,
+      image: result.url,
+      imagePublicId: result.public_id,
       category,
     });
 
     const savedProduct = await newProduct.save();
-    console.log(savedProduct);
 
     return res.status(201).json({
       success: true,
@@ -92,23 +100,42 @@ exports.addNewProduct = async (req, res) => {
   }
 };
 
-
 // Edit Product
 exports.editProduct = async (req, res) => {
   try {
     const { productId, ...updateFields } = req.body;
+
     if (!productId) {
-      res.status(400).json({
+      return res.status(400).json({
         success: false,
         message: "Product ID is required",
       });
     }
 
-    if (Object.keys(updateFields).length === 0) {
-      res.status(400).json({
+    if (Object.keys(updateFields).length === 0 && !req.file) {
+      return res.status(400).json({
         success: false,
         message: "No fields provided for update",
       });
+    }
+
+    const existingProduct = await productCollection.findById(productId);
+    if (!existingProduct) {
+      return res.status(404).json({
+        success: false,
+        message: "Product not found",
+      });
+    }
+
+    if (req.file) {
+      if (existingProduct.imagePublicId) {
+        await cloudinary.uploader.destroy(existingProduct.imagePublicId);
+      }
+
+      const uploadResult = await uploadFromBuffer(req.file.buffer);
+
+      updateFields.image = uploadResult.url;
+      updateFields.imagePublicId = uploadResult.public_id;
     }
 
     const updatedProduct = await productCollection.findByIdAndUpdate(
@@ -117,21 +144,14 @@ exports.editProduct = async (req, res) => {
       { new: true, runValidators: true }
     );
 
-    if (!updatedProduct) {
-      res.status(404).json({
-        success: false,
-        message: "Product not found",
-      });
-    }
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       message: "Product updated successfully",
       data: updatedProduct,
     });
   } catch (err) {
     console.error("Error editing product:", err.message);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       message: "An error occurred while updating the product",
       error: err.message,
@@ -142,7 +162,8 @@ exports.editProduct = async (req, res) => {
 // Delete Product
 exports.deleteProduct = async (req, res) => {
   try {
-    const { productId } = req.body;
+    const productId = req.params.productId;
+    console.log(productId);
 
     if (!productId) {
       res.status(400).json({
@@ -151,6 +172,10 @@ exports.deleteProduct = async (req, res) => {
       });
     }
 
+    const product = await productCollection.findById(productId);
+    const deleteImage = await cloudinary.uploader.destroy(
+      product.imagePublicId
+    );
     const deletedProduct = await productCollection.findByIdAndDelete(productId);
 
     if (!deletedProduct) {
@@ -178,18 +203,25 @@ exports.deleteProduct = async (req, res) => {
 // Add Banner
 exports.addBanner = async (req, res) => {
   try {
-    const { image, discription } = req.body;
+    const { discription } = req.body;
 
-    if (!image) {
+    if (!req.file) {
       res.status(400).json({
         success: false,
         message: "Image is a required field.",
       });
     }
 
+    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
+    console.log(imgurResponse);
+
+    const image = imgurResponse.link;
+    const deleteHash = imgurResponse.deletehash;
+
     const newBanner = new bannerCollection({
       image,
       discription,
+      deleteHash,
     });
 
     const savedBanner = await newBanner.save();
@@ -298,18 +330,25 @@ exports.deleteBanner = async (req, res) => {
 // Create Offer
 exports.createOffer = async (req, res) => {
   try {
-    const { image, minOffer, maxOffer } = req.body;
-    if (!image || !minOffer || !maxOffer) {
+    const { minOffer, maxOffer } = req.body;
+    if (!req.file || !minOffer || !maxOffer) {
       res.status(400).json({
         success: false,
         message: "Image, minOffer, and maxOffer are required fields.",
       });
     }
 
+    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
+    console.log(imgurResponse);
+
+    const image = imgurResponse.link;
+    const deleteHash = imgurResponse.deletehash;
+
     const newOffer = new offerCollection({
       image,
       minOffer,
       maxOffer,
+      deleteHash,
     });
 
     const savedOffer = await newOffer.save();
@@ -415,36 +454,39 @@ exports.getAllUsersList = async (req, res) => {
   try {
     const allUsers = await productCallbackCollection.aggregate([
       {
-        $sort: { createdAt: -1 } 
+        $sort: { createdAt: -1 },
       },
       {
         $lookup: {
-          from: "products", 
-          localField: "productId", 
-          foreignField: "_id", 
-          as: "productDetails"
-        }
+          from: "products",
+          localField: "productId",
+          foreignField: "_id",
+          as: "productDetails",
+        },
       },
       {
-        $unwind: "$productDetails" 
-      }
+        $unwind: "$productDetails",
+      },
     ]);
 
     res.status(200).json({
       success: true,
-      message: "Successfully fetched all user callback requests with product details.",
-      data: allUsers
+      message:
+        "Successfully fetched all user callback requests with product details.",
+      data: allUsers,
     });
   } catch (err) {
-    console.error("Error fetching all users with product details:", err.message);
+    console.error(
+      "Error fetching all users with product details:",
+      err.message
+    );
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching all users",
-      error: err.message
+      error: err.message,
     });
   }
 };
-
 
 // Get Single Product
 exports.getSingleProduct = async (req, res) => {

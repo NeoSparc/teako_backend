@@ -13,6 +13,9 @@ const offerSchema = new mongoose.Schema({
     type: String,
     required:true
   },
+  deleteHash:{
+    type:String
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -43,7 +43,7 @@ exports.getSingleProduct = async (req, res) => {
 // Connect With Us Form Submission
 exports.connectWithUs = async (req, res) => {
   console.log(req.body);
-  
+
   try {
     const { name, email, phoneNumber, place, category } = req.body;
 
@@ -57,7 +57,7 @@ exports.connectWithUs = async (req, res) => {
     const newRequest = new usersCollection({
       name,
       email,
-      phoneNumber, 
+      phoneNumber,
       place,
       category,
     });
@@ -82,10 +82,10 @@ exports.connectWithUs = async (req, res) => {
 // Product Callback Form Submission
 exports.productCallBack = async (req, res) => {
   try {
-    const { name, email, phoneNumber, place, productId } = req.body;
+    const { name, email, phoneNumber, place, id } = req.body;
 
-    if (!name || !phoneNumber || !place || !productId) {
-      return res.status(400).json({
+    if (!name || !phoneNumber || !place || !id) {
+      res.status(400).json({
         success: false,
         message:
           "Name, phone number, place, and product ID are required fields.",
@@ -97,19 +97,19 @@ exports.productCallBack = async (req, res) => {
       email,
       phoneNumber,
       place,
-      productId,
+      productId:id
     });
 
     const savedCallback = await newCallback.save();
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
-      message: "Callback request submitted successfully.",
+      message: "Callback request submitted successfully",
       data: savedCallback,
     });
   } catch (err) {
     console.error("Error submitting callback request:", err.message);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "An error occurred while submitting the callback request.",
       error: err.message,
@@ -120,23 +120,37 @@ exports.productCallBack = async (req, res) => {
 // Show all products
 exports.showAllProduct = async (req, res) => {
   try {
-    const products = await productCollection.find();
+    const { searchIndex, selectedCategory } = req.body;
 
-    if (products.length === 0) {
+    const query = {};
+    if (searchIndex) {
+      query.$or = [
+        { productName: { $regex: searchIndex, $options: "i" } },
+        { description: { $regex: searchIndex, $options: "i" } },
+      ];
+    }
+
+    if (selectedCategory && selectedCategory !== "All") {
+      query.category = selectedCategory;
+    }
+
+    const products = await productCollection.find(query);
+
+    if (!products.length) {
       return res.status(404).json({
         success: false,
-        message: "No products found.",
+        message: "No products found matching your criteria.",
       });
     }
 
-    return res.status(200).json({
+    res.status(200).json({
       success: true,
       message: "Products fetched successfully.",
       data: products,
     });
   } catch (err) {
     console.error("Error fetching products:", err.message);
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "An error occurred while fetching the products.",
       error: err.message,
@@ -198,5 +212,22 @@ exports.getAllOffers = async (req, res) => {
       error: err.message,
     });
   }
-}; 
+};
 
+// get produts related to category
+exports.getRelatedProducts = async (req, res) => {
+  try {
+    const { category } = req.body;
+
+    if (!category) {
+      res.status(400).json({ message: "Category is required." });
+    }
+
+    const relatedProducts = await productCollection.find({ category }).limit(4);
+
+    res.status(200).json(relatedProducts);
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    res.status(500).json({ message: "Server error, please try again later." });
+  }
+};

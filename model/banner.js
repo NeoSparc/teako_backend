@@ -8,6 +8,9 @@ const bannerSchema = new mongoose.Schema({
   discription: {
     type: String,
   },
+  deleteHash:{
+    type:String
+  },
   createdAt: {
     type: Date,
     default: Date.now,

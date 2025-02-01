@@ -7,6 +7,7 @@
     },
     description: {
       type: String,
+      required:true
     },
     price: {
       type: String,
@@ -18,6 +19,9 @@
     width: {
       type: String,
     },
+    imagePublicId:{
+      type:String
+    },
     availability:{
       type:Boolean,
       required:true
@@ -25,9 +29,6 @@
     image:{
       type:String,
       required:true
-    },
-    deleteHash:{
-      type:String
     },
     category:{
       type:String,

@@ -9,7 +9,7 @@ adminRouter.get("/users-with-product", adminController.getAllUsersList);
 
 adminRouter.post("/product",multer.upload, adminController.addNewProduct);
 adminRouter.put("/product", multer.upload , adminController.editProduct);
-adminRouter.delete("/product", adminController.deleteProduct);
+adminRouter.delete("/product/:productId", adminController.deleteProduct);
 adminRouter.get("/product/:id", adminController.getSingleProduct);
 
 adminRouter.post("/banner",multer.upload, adminController.addBanner);
