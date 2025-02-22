@@ -13,8 +13,9 @@ const offerSchema = new mongoose.Schema({
     type: String,
     required:true
   },
-  deleteHash:{
-    type:String
+  imagePublicId:{
+    type:String,
+    required:true
   },
   createdAt: {
     type: Date,

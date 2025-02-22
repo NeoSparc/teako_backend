@@ -10,8 +10,8 @@ const adminData = new mongoose.Schema({
     required: true,
   },
   otp: {
-    type: Number,
-    default: 0,
+    type: String,
+    default: '',
   },
   createdAt: {
     type: Date,

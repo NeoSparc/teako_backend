@@ -42,8 +42,6 @@ exports.getSingleProduct = async (req, res) => {
 
 // Connect With Us Form Submission
 exports.connectWithUs = async (req, res) => {
-  console.log(req.body);
-
   try {
     const { name, email, phoneNumber, place, category } = req.body;
 
@@ -97,7 +95,7 @@ exports.productCallBack = async (req, res) => {
       email,
       phoneNumber,
       place,
-      productId:id
+      productId: id,
     });
 
     const savedCallback = await newCallback.save();
@@ -160,7 +158,6 @@ exports.showAllProduct = async (req, res) => {
 
 // banner get
 exports.getAllBanners = async (req, res) => {
-  console.log(req.body);
   try {
     const allBanners = await bannerCollection.find();
 
@@ -188,9 +185,8 @@ exports.getAllBanners = async (req, res) => {
 
 // get all offers
 exports.getAllOffers = async (req, res) => {
-  console.log(req.body);
   try {
-    const allOffers = await offerCollection.find();
+    const allOffers = await offerCollection.find().limit(3);
 
     if (allOffers.length > 0) {
       res.status(200).json({
@@ -229,5 +225,35 @@ exports.getRelatedProducts = async (req, res) => {
   } catch (error) {
     console.error("Error fetching related products:", error);
     res.status(500).json({ message: "Server error, please try again later." });
+  }
+};
+
+// get 3 randome products
+exports.getRandomProducts = async (req, res) => {
+  try {
+    const products = await productCollection.aggregate([
+      { $match: { availability: true } },
+      { $sample: { size: 3 } },
+    ]);
+
+    if (products.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No products found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Random products retrieved successfully",
+      data: products,
+    });
+  } catch (err) {
+    console.error("Error fetching products:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching products",
+      error: err.message,
+    });
   }
 };

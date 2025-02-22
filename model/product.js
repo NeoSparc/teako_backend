@@ -20,7 +20,8 @@
       type: String,
     },
     imagePublicId:{
-      type:String
+      type:String,
+      required:true
     },
     availability:{
       type:Boolean,

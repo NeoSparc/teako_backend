@@ -9,5 +9,6 @@ userRouter.post('/products', userController.showAllProduct);
 userRouter.get('/offers', userController.getAllOffers);
 userRouter.get('/banners', userController.getAllBanners);
 userRouter.post('/relatedProducts',userController.getRelatedProducts)
+userRouter.get('/ramdomeProducts',userController.getRandomProducts)
 
 module.exports = userRouter;

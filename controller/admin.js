@@ -69,7 +69,6 @@ exports.addNewProduct = async (req, res) => {
 
     // Upload image to Cloudinary
     const result = await uploadFromBuffer(req.file.buffer);
-    console.log(result);
 
     const newProduct = new productCollection({
       productName,
@@ -163,7 +162,6 @@ exports.editProduct = async (req, res) => {
 exports.deleteProduct = async (req, res) => {
   try {
     const productId = req.params.productId;
-    console.log(productId);
 
     if (!productId) {
       res.status(400).json({
@@ -200,6 +198,61 @@ exports.deleteProduct = async (req, res) => {
   }
 };
 
+// get all banners
+exports.getAllBanners = async (req, res) => {
+  try {
+    const banners = await bannerCollection.find().sort({ createdAt: -1 });
+
+    if (banners.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No banners found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Banners retrieved successfully",
+      data: banners,
+    });
+  } catch (err) {
+    console.error("Error fetching banners:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching banners",
+      error: err.message,
+    });
+  }
+};
+
+// get single banner
+exports.getSingleBanner = async (req, res) => {
+  try {
+    const { bannerId } = req.body;
+    const banner = await bannerCollection.findById(bannerId);
+
+    if (!banner) {
+      return res.status(404).json({
+        success: false,
+        message: "No banner found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Banner retrieved successfully",
+      data: banner,
+    });
+  } catch (err) {
+    console.error("Error fetching banner:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching the banner",
+      error: err.message,
+    });
+  }
+};
+
 // Add Banner
 exports.addBanner = async (req, res) => {
   try {
@@ -212,16 +265,12 @@ exports.addBanner = async (req, res) => {
       });
     }
 
-    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
-    console.log(imgurResponse);
-
-    const image = imgurResponse.link;
-    const deleteHash = imgurResponse.deletehash;
+    const result = await uploadFromBuffer(req.file.buffer);
 
     const newBanner = new bannerCollection({
-      image,
+      image: result.url,
       discription,
-      deleteHash,
+      imagePublicId: result.public_id,
     });
 
     const savedBanner = await newBanner.save();
@@ -244,7 +293,7 @@ exports.addBanner = async (req, res) => {
 // Edit Banner
 exports.editBanner = async (req, res) => {
   try {
-    const { bannerId, image, discription } = req.body;
+    const { bannerId, discription } = req.body;
 
     if (!bannerId) {
       res.status(400).json({
@@ -254,7 +303,17 @@ exports.editBanner = async (req, res) => {
     }
 
     const updateData = {};
-    if (image) updateData.image = image;
+    if (req.file) {
+      const banner = await bannerCollection.findById(bannerId);
+      const deleteImage = await cloudinary.uploader.destroy(
+        banner.imagePublicId
+      );
+      const uploadResult = await uploadFromBuffer(req.file.buffer);
+
+      updateData.image = uploadResult.url;
+      updateData.imagePublicId = uploadResult.public_id;
+    }
+
     if (discription) updateData.discription = discription;
 
     if (Object.keys(updateData).length === 0) {
@@ -294,7 +353,7 @@ exports.editBanner = async (req, res) => {
 // Delete Banner
 exports.deleteBanner = async (req, res) => {
   try {
-    const { bannerId } = req.body;
+    const bannerId = req.params.bannerId;
 
     if (!bannerId) {
       res.status(400).json({
@@ -303,6 +362,8 @@ exports.deleteBanner = async (req, res) => {
       });
     }
 
+    const banner = await bannerCollection.findById(bannerId);
+    const deleteImage = await cloudinary.uploader.destroy(banner.imagePublicId);
     const deletedBanner = await bannerCollection.findByIdAndDelete(bannerId);
 
     if (!deletedBanner) {
@@ -327,10 +388,66 @@ exports.deleteBanner = async (req, res) => {
   }
 };
 
+// get single offer
+exports.getSingleOffer = async (req, res) => {
+  try {
+    const { offerId } = req.body;
+    const offer = await offerCollection.findById(offerId);
+
+    if (!offer) {
+      return res.status(404).json({
+        success: false,
+        message: "No offer found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Offer retrieved successfully",
+      data: offer,
+    });
+  } catch (err) {
+    console.error("Error fetching offers:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching offers",
+      error: err.message,
+    });
+  }
+};
+
+// Get All Offers
+exports.getAllOffers = async (req, res) => {
+  try {
+    const offers = await offerCollection.find().sort({ createdAt: -1 });
+
+    if (offers.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "No offers found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Offers retrieved successfully",
+      data: offers,
+    });
+  } catch (err) {
+    console.error("Error fetching offers:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching offers",
+      error: err.message,
+    });
+  }
+};
+
 // Create Offer
 exports.createOffer = async (req, res) => {
   try {
     const { minOffer, maxOffer } = req.body;
+
     if (!req.file || !minOffer || !maxOffer) {
       res.status(400).json({
         success: false,
@@ -338,17 +455,13 @@ exports.createOffer = async (req, res) => {
       });
     }
 
-    const imgurResponse = await imgurService.uploadToImgur(req.file.buffer);
-    console.log(imgurResponse);
-
-    const image = imgurResponse.link;
-    const deleteHash = imgurResponse.deletehash;
+    const result = await uploadFromBuffer(req.file.buffer);
 
     const newOffer = new offerCollection({
-      image,
+      image: result.url,
       minOffer,
       maxOffer,
-      deleteHash,
+      imagePublicId: result.public_id,
     });
 
     const savedOffer = await newOffer.save();
@@ -371,7 +484,7 @@ exports.createOffer = async (req, res) => {
 // Edit Offer
 exports.editOffer = async (req, res) => {
   try {
-    const { offerId, image, minOffer, maxOffer } = req.body;
+    const { offerId, minOffer, maxOffer } = req.body;
 
     if (!offerId) {
       res.status(400).json({
@@ -381,9 +494,18 @@ exports.editOffer = async (req, res) => {
     }
 
     const updateFields = {};
-    if (image !== undefined) updateFields.image = image;
-    if (minOffer !== undefined) updateFields.minOffer = minOffer;
-    if (maxOffer !== undefined) updateFields.maxOffer = maxOffer;
+    if (req.file) {
+      const offer = await offerCollection.findById(offerId);
+      const deleteImage = await cloudinary.uploader.destroy(
+        offer.imagePublicId
+      );
+      const updateData = await uploadFromBuffer(req.file.buffer);
+
+      updateFields.image = updateData.url;
+      updateFields.imagePublicId = updateData.public_id;
+    }
+    updateFields.minOffer = minOffer;
+    updateFields.maxOffer = maxOffer;
 
     const updatedOffer = await offerCollection.findByIdAndUpdate(
       offerId,
@@ -416,7 +538,7 @@ exports.editOffer = async (req, res) => {
 // Delete Offer
 exports.deleteOffer = async (req, res) => {
   try {
-    const { offerId } = req.body;
+    const offerId = req.params.offerId;
 
     if (!offerId) {
       res.status(400).json({
@@ -424,6 +546,10 @@ exports.deleteOffer = async (req, res) => {
         message: "Offer ID is required.",
       });
     }
+
+    const offer = await offerCollection.findById(offerId);
+
+    const deleteImage = await cloudinary.uploader.destroy(offer.imagePublicId);
 
     const deletedOffer = await offerCollection.findByIdAndDelete(offerId);
 
@@ -519,6 +645,45 @@ exports.getSingleProduct = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "An error occurred while fetching the product.",
+      error: err.message,
+    });
+  }
+};
+
+// get requst for dashbord
+exports.getAllUsersAndProducts = async (req, res) => {
+  try {
+    const callRequistsUsers = await usersCollection
+      .find()
+      .sort({ createdAt: -1 });
+    const productCallbackUsers = await productCallbackCollection
+      .find()
+      .sort({ createdAt: -1 });
+    const allProducts = await productCollection.find().sort({ createdAt: -1 });
+
+    const totalUsers = callRequistsUsers.length + productCallbackUsers.length;
+
+    if (totalUsers > 0 || allProducts.length > 0) {
+      res.status(200).json({
+        success: true,
+        message: "Users and products retrieved successfully",
+        totalUsers,
+        totalProducts: allProducts.length,
+        callRequistsUsers,
+        productCallbackUsers,
+        products: allProducts,
+      });
+    } else {
+      res.status(404).json({
+        success: false,
+        message: "No users or products found",
+      });
+    }
+  } catch (err) {
+    console.error("Error fetching users and products:", err.message);
+    res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching users and products",
       error: err.message,
     });
   }
